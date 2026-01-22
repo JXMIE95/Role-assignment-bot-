@@ -1,4 +1,3 @@
-// src/commands/panel.js
 const {
   SlashCommandBuilder,
   PermissionFlagsBits,
@@ -14,12 +13,14 @@ const {
 
 const { buildPanelComponents } = require("../ui");
 
+/* helpers */
+
 function defaultPanel(guildId, name) {
   return {
     guildId,
     name,
     title: "Staff Role Assignment Panel",
-    text: "Pick a user + role, then assign/remove.",
+    text: "Pick a user and role, then assign or remove.",
     allowedRoleIds: [],
     staffRoleIds: [],
     requireManageRoles: true,
@@ -27,7 +28,7 @@ function defaultPanel(guildId, name) {
   };
 }
 
-function ensurePanelInGuild(panelId, guildId) {
+function ensurePanel(panelId, guildId) {
   const panel = getPanel(panelId);
   if (!panel || panel.guildId !== guildId) return null;
   return panel;
@@ -39,299 +40,197 @@ function addUnique(arr, id) {
 }
 
 function removeOne(arr, id) {
-  return arr.filter((x) => x !== id);
+  return arr.filter(x => x !== id);
 }
+
+/* command */
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("panel")
-    .setDescription("Manage staff role panels")
+    .setDescription("Manage staff role assignment panels")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 
-    // create
-    .addSubcommand((sc) =>
-      sc
-        .setName("create")
-        .setDescription("Create a new panel configuration")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Unique id for this panel (e.g. staff-main)")
+    .addSubcommand(sc =>
+      sc.setName("create")
+        .setDescription("Create a new panel")
+        .addStringOption(o =>
+          o.setName("panel_id")
+            .setDescription("Unique panel id (e.g. staff-main)")
             .setRequired(true)
         )
-        .addStringOption((o) =>
-          o
-            .setName("name")
-            .setDescription("Display name for this panel")
+        .addStringOption(o =>
+          o.setName("name")
+            .setDescription("Display name for the panel")
             .setRequired(true)
         )
     )
 
-    // delete
-    .addSubcommand((sc) =>
-      sc
-        .setName("delete")
-        .setDescription("Delete a panel configuration")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
+    .addSubcommand(sc =>
+      sc.setName("delete")
+        .setDescription("Delete a panel")
+        .addStringOption(o =>
+          o.setName("panel_id")
             .setDescription("Panel id to delete")
             .setRequired(true)
         )
     )
 
-    // list
-    .addSubcommand((sc) =>
-      sc
-        .setName("list")
-        .setDescription("List all panels in this server")
+    .addSubcommand(sc =>
+      sc.setName("list")
+        .setDescription("List panels in this server")
     )
 
-    // info
-    .addSubcommand((sc) =>
-      sc
-        .setName("info")
-        .setDescription("Show the configuration for a panel")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to view")
+    .addSubcommand(sc =>
+      sc.setName("info")
+        .setDescription("View panel configuration")
+        .addStringOption(o =>
+          o.setName("panel_id")
+            .setDescription("Panel id")
             .setRequired(true)
         )
     )
 
-    // post
-    .addSubcommand((sc) =>
-      sc
-        .setName("post")
-        .setDescription("Post a panel message to a channel")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to post")
+    .addSubcommand(sc =>
+      sc.setName("post")
+        .setDescription("Post a panel in a channel")
+        .addStringOption(o =>
+          o.setName("panel_id")
+            .setDescription("Panel id")
             .setRequired(true)
         )
-        .addChannelOption((o) =>
-          o
-            .setName("channel")
-            .setDescription("Channel to post the panel into")
+        .addChannelOption(o =>
+          o.setName("channel")
+            .setDescription("Channel to post the panel")
             .addChannelTypes(ChannelType.GuildText)
             .setRequired(true)
         )
     )
 
-    // settext
-    .addSubcommand((sc) =>
-      sc
-        .setName("settext")
-        .setDescription("Set the title and/or text for a panel")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to edit")
+    .addSubcommand(sc =>
+      sc.setName("settext")
+        .setDescription("Set panel title and text")
+        .addStringOption(o =>
+          o.setName("panel_id")
+            .setDescription("Panel id")
             .setRequired(true)
         )
-        .addStringOption((o) =>
-          o
-            .setName("title")
-            .setDescription("New title (optional)")
+        .addStringOption(o =>
+          o.setName("title")
+            .setDescription("Panel title")
             .setRequired(false)
         )
-        .addStringOption((o) =>
-          o
-            .setName("text")
-            .setDescription("New text (optional)")
+        .addStringOption(o =>
+          o.setName("text")
+            .setDescription("Panel text")
             .setRequired(false)
         )
     )
 
-    // settoggle
-    .addSubcommand((sc) =>
-      sc
-        .setName("settoggle")
+    .addSubcommand(sc =>
+      sc.setName("settoggle")
         .setDescription("Toggle panel requirements")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to edit")
+        .addStringOption(o =>
+          o.setName("panel_id")
+            .setDescription("Panel id")
             .setRequired(true)
         )
-        .addBooleanOption((o) =>
-          o
-            .setName("require_manage_roles")
-            .setDescription("Whether user must have Manage Roles to use the panel")
+        .addBooleanOption(o =>
+          o.setName("require_manage_roles")
+            .setDescription("Require Manage Roles permission")
             .setRequired(true)
         )
     )
 
-    // setlog
-    .addSubcommand((sc) =>
-      sc
-        .setName("setlog")
-        .setDescription("Set (or clear) the log channel for a panel")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to edit")
+    .addSubcommand(sc =>
+      sc.setName("allowrole")
+        .setDescription("Allow a role to be assigned by this panel")
+        .addStringOption(o =>
+          o.setName("panel_id")
+            .setDescription("Panel id")
             .setRequired(true)
         )
-        .addChannelOption((o) =>
-          o
-            .setName("channel")
-            .setDescription("Channel to send logs into (optional)")
-            .addChannelTypes(ChannelType.GuildText)
-            .setRequired(false)
-        )
-        .addBooleanOption((o) =>
-          o
-            .setName("none")
-            .setDescription("Set true to clear the log channel")
-            .setRequired(false)
-        )
-    )
-
-    // allowrole
-    .addSubcommand((sc) =>
-      sc
-        .setName("allowrole")
-        .setDescription("Add a role to the allowed assign/remove list for this panel")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to edit")
-            .setRequired(true)
-        )
-        .addRoleOption((o) =>
-          o
-            .setName("role")
+        .addRoleOption(o =>
+          o.setName("role")
             .setDescription("Role to allow")
             .setRequired(true)
         )
     )
 
-    // disallowrole
-    .addSubcommand((sc) =>
-      sc
-        .setName("disallowrole")
-        .setDescription("Remove a role from the allowed list for this panel")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to edit")
+    .addSubcommand(sc =>
+      sc.setName("disallowrole")
+        .setDescription("Remove an allowed role")
+        .addStringOption(o =>
+          o.setName("panel_id")
+            .setDescription("Panel id")
             .setRequired(true)
         )
-        .addRoleOption((o) =>
-          o
-            .setName("role")
+        .addRoleOption(o =>
+          o.setName("role")
             .setDescription("Role to remove")
             .setRequired(true)
         )
     )
 
-    // clearroles
-    .addSubcommand((sc) =>
-      sc
-        .setName("clearroles")
-        .setDescription("Clear the allowed role list for this panel")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to edit")
-            .setRequired(true)
-        )
-    )
-
-    // allowstaff
-    .addSubcommand((sc) =>
-      sc
-        .setName("allowstaff")
-        .setDescription("Add a staff role allowed to use this panel")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to edit")
-            .setRequired(true)
-        )
-        .addRoleOption((o) =>
-          o
-            .setName("role")
-            .setDescription("Staff role to allow")
-            .setRequired(true)
-        )
-    )
-
-    // disallowstaff
-    .addSubcommand((sc) =>
-      sc
-        .setName("disallowstaff")
-        .setDescription("Remove a staff role from the allowed-to-use list")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to edit")
-            .setRequired(true)
-        )
-        .addRoleOption((o) =>
-          o
-            .setName("role")
-            .setDescription("Staff role to remove")
-            .setRequired(true)
-        )
-    )
-
-    // clearstaff
-    .addSubcommand((sc) =>
-      sc
-        .setName("clearstaff")
-        .setDescription("Clear staff role restrictions for this panel")
-        .addStringOption((o) =>
-          o
-            .setName("panel_id")
-            .setDescription("Panel id to edit")
+    .addSubcommand(sc =>
+      sc.setName("clearroles")
+        .setDescription("Clear allowed roles list")
+        .addStringOption(o =>
+          o.setName("panel_id")
+            .setDescription("Panel id")
             .setRequired(true)
         )
     ),
 
   async execute(interaction) {
-    const sub = interaction.options.getSubcommand();
     const guild = interaction.guild;
-    if (!guild) return interaction.reply({ content: "Server only.", ephemeral: true });
+    if (!guild) {
+      return interaction.reply({ content: "Server only.", ephemeral: true });
+    }
 
+    const sub = interaction.options.getSubcommand();
+
+    /* CREATE */
     if (sub === "create") {
       const panelId = interaction.options.getString("panel_id", true);
       const name = interaction.options.getString("name", true);
 
       if (getPanel(panelId)) {
-        return interaction.reply({ content: "That panel_id already exists.", ephemeral: true });
+        return interaction.reply({ content: "Panel already exists.", ephemeral: true });
       }
 
       upsertPanel(panelId, defaultPanel(guild.id, name));
       return interaction.reply({ content: `✅ Created panel **${panelId}**.`, ephemeral: true });
     }
 
+    /* DELETE */
     if (sub === "delete") {
       const panelId = interaction.options.getString("panel_id", true);
-      const panel = ensurePanelInGuild(panelId, guild.id);
-      if (!panel) return interaction.reply({ content: "Panel not found.", ephemeral: true });
+      if (!ensurePanel(panelId, guild.id)) {
+        return interaction.reply({ content: "Panel not found.", ephemeral: true });
+      }
 
       deletePanel(panelId);
       return interaction.reply({ content: `🗑️ Deleted **${panelId}**.`, ephemeral: true });
     }
 
+    /* LIST */
     if (sub === "list") {
       const panels = listPanelsByGuild(guild.id);
-      if (!panels.length) return interaction.reply({ content: "No panels found.", ephemeral: true });
+      if (!panels.length) {
+        return interaction.reply({ content: "No panels found.", ephemeral: true });
+      }
 
-      const lines = panels.slice(0, 30).map(p =>
-        `• **${p.id}** — ${p.name} (allowedRoles: ${p.allowedRoleIds.length}, staffRoles: ${p.staffRoleIds.length})`
-      );
-
-      return interaction.reply({ content: `Panels:\n${lines.join("\n")}`, ephemeral: true });
+      return interaction.reply({
+        content: panels.map(p => `• **${p.id}** — ${p.name}`).join("\n"),
+        ephemeral: true
+      });
     }
 
+    /* INFO */
     if (sub === "info") {
       const panelId = interaction.options.getString("panel_id", true);
-      const panel = ensurePanelInGuild(panelId, guild.id);
+      const panel = ensurePanel(panelId, guild.id);
       if (!panel) return interaction.reply({ content: "Panel not found.", ephemeral: true });
 
       return interaction.reply({
@@ -339,108 +238,77 @@ module.exports = {
           `**${panelId}** — ${panel.name}\n` +
           `Title: ${panel.title}\n` +
           `Text: ${panel.text}\n` +
-          `requireManageRoles: ${panel.requireManageRoles}\n` +
-          `allowedRoleIds (${panel.allowedRoleIds.length}): ${panel.allowedRoleIds.join(", ") || "none"}\n` +
-          `staffRoleIds (${panel.staffRoleIds.length}): ${panel.staffRoleIds.join(", ") || "none"}\n` +
-          `logChannelId: ${panel.logChannelId || "none"}`,
+          `Allowed roles: ${panel.allowedRoleIds.length}\n` +
+          `Require Manage Roles: ${panel.requireManageRoles}`,
         ephemeral: true
       });
     }
 
+    /* POST */
     if (sub === "post") {
       const panelId = interaction.options.getString("panel_id", true);
       const channel = interaction.options.getChannel("channel", true);
-
-      const panel = ensurePanelInGuild(panelId, guild.id);
+      const panel = ensurePanel(panelId, guild.id);
       if (!panel) return interaction.reply({ content: "Panel not found.", ephemeral: true });
-
-      const components = buildPanelComponents(guild, panelId, panel);
 
       await channel.send({
-        content: `**${panel.title || "Staff Role Assignment Panel"}**\n${panel.text || ""}`,
-        components
+        content: `**${panel.title}**\n${panel.text}`,
+        components: buildPanelComponents(guild, panelId, panel)
       });
 
-      return interaction.reply({ content: `✅ Posted panel **${panelId}** in ${channel}.`, ephemeral: true });
+      return interaction.reply({ content: "✅ Panel posted.", ephemeral: true });
     }
 
+    /* SETTEXT */
     if (sub === "settext") {
       const panelId = interaction.options.getString("panel_id", true);
-      const panel = ensurePanelInGuild(panelId, guild.id);
+      const panel = ensurePanel(panelId, guild.id);
       if (!panel) return interaction.reply({ content: "Panel not found.", ephemeral: true });
 
-      const title = interaction.options.getString("title", false);
-      const text = interaction.options.getString("text", false);
+      const title = interaction.options.getString("title");
+      const text = interaction.options.getString("text");
 
       if (title !== null) panel.title = title;
       if (text !== null) panel.text = text;
 
       upsertPanel(panelId, panel);
-      return interaction.reply({ content: `✅ Updated text for **${panelId}**.`, ephemeral: true });
+      return interaction.reply({ content: "✅ Updated panel text.", ephemeral: true });
     }
 
+    /* SETTOGGLE */
     if (sub === "settoggle") {
       const panelId = interaction.options.getString("panel_id", true);
-      const panel = ensurePanelInGuild(panelId, guild.id);
+      const panel = ensurePanel(panelId, guild.id);
       if (!panel) return interaction.reply({ content: "Panel not found.", ephemeral: true });
 
       panel.requireManageRoles = interaction.options.getBoolean("require_manage_roles", true);
       upsertPanel(panelId, panel);
 
-      return interaction.reply({
-        content: `✅ **${panelId}** requireManageRoles set to **${panel.requireManageRoles}**.`,
-        ephemeral: true
-      });
+      return interaction.reply({ content: "✅ Updated panel toggle.", ephemeral: true });
     }
 
-    if (sub === "setlog") {
-      const panelId = interaction.options.getString("panel_id", true);
-      const panel = ensurePanelInGuild(panelId, guild.id);
-      if (!panel) return interaction.reply({ content: "Panel not found.", ephemeral: true });
-
-      const none = interaction.options.getBoolean("none", false);
-      const channel = interaction.options.getChannel("channel", false);
-
-      if (none) panel.logChannelId = null;
-      else if (channel) panel.logChannelId = channel.id;
-
-      upsertPanel(panelId, panel);
-      return interaction.reply({
-        content: `✅ **${panelId}** log channel is now: **${panel.logChannelId ? `<#${panel.logChannelId}>` : "none"}**`,
-        ephemeral: true
-      });
-    }
-
+    /* ROLE MANAGEMENT */
     if (sub === "allowrole" || sub === "disallowrole" || sub === "clearroles") {
       const panelId = interaction.options.getString("panel_id", true);
-      const panel = ensurePanelInGuild(panelId, guild.id);
+      const panel = ensurePanel(panelId, guild.id);
       if (!panel) return interaction.reply({ content: "Panel not found.", ephemeral: true });
 
       if (sub === "clearroles") {
         panel.allowedRoleIds = [];
         upsertPanel(panelId, panel);
-        return interaction.reply({ content: `✅ Cleared allowed roles for **${panelId}**.`, ephemeral: true });
+        return interaction.reply({ content: "✅ Cleared allowed roles.", ephemeral: true });
       }
 
       const role = interaction.options.getRole("role", true);
 
-      if (role.managed) {
-        return interaction.reply({ content: "That role is managed/integration-based and can’t be used.", ephemeral: true });
-      }
-      if (role.id === guild.id) {
-        return interaction.reply({ content: "You can't use @everyone.", ephemeral: true });
-      }
-
       if (sub === "allowrole") {
-        panel.allowedRoleIds = addUnique(panel.allowedRoleIds || [], role.id);
-        upsertPanel(panelId, panel);
-
-        const warn = panel.allowedRoleIds.length > 25
-          ? "\n⚠️ Discord dropdowns can only show 25 roles. Only the first 25 will display."
-          : "";
-
-        return interaction.reply({ content: `✅ Allowed ${role} for **${panelId}**.${warn}`, ephemeral: true });
+        addUnique(panel.allowedRoleIds, role.id);
+      } else {
+        panel.allowedRoleIds = removeOne(panel.allowedRoleIds, role.id);
       }
 
-      if (sub === "disallowrole") {
-        panel.allowedRoleIds = removeOne(panel.allowedRole
+      upsertPanel(panelId, panel);
+      return interaction.reply({ content: "✅ Updated allowed roles.", ephemeral: true });
+    }
+  }
+};
