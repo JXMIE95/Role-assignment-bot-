@@ -1,6 +1,19 @@
 require("dotenv").config();
-const{REST,Routes}=require("discord.js");
-const cmd=require("./commands/panel");
-new REST({version:"10"}).setToken(process.env.DISCORD_TOKEN)
-.put(Routes.applicationGuildCommands(process.env.CLIENT_ID,process.env.GUILD_ID),{body:[cmd.data.toJSON()]})
-.then(()=>console.log("Deployed"));
+const { REST, Routes } = require("discord.js");
+
+const TOKEN = process.env.DISCORD_TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
+
+if (!TOKEN || !CLIENT_ID) {
+  throw new Error("Missing DISCORD_TOKEN or CLIENT_ID in .env");
+}
+
+const panelCommand = require("./commands/panel");
+const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+(async () => {
+  await rest.put(Routes.applicationCommands(CLIENT_ID), {
+    body: [panelCommand.data.toJSON()]
+  });
+  console.log("✅ Deployed global /panel command.");
+})();
